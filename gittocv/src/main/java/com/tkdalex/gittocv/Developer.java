@@ -2,7 +2,7 @@ package com.tkdalex.gittocv;
 
 import java.util.HashMap;
 
-public class Developer {
+public class Developer { // Should be committer
 	public String name;
 	public String email;
 	public int commit;

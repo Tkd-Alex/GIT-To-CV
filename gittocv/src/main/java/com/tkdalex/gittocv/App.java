@@ -25,7 +25,7 @@ public class App implements Study
 	
 	public void execute() {
 		DevelopersVisitor analyzer = new DevelopersVisitor();
-		String urlOrPath = "/home/alessandro/GitHub/ViralStats";
+		String urlOrPath = "/home/alessandro/GitHub/Giannetto-Mobile";
 		
 		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 		String csvfilename = "./" + getRepoName(urlOrPath) + "_" + timestamp +".csv";

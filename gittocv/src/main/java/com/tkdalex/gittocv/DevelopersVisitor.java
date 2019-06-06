@@ -1,6 +1,9 @@
 package com.tkdalex.gittocv;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.Collectors;
@@ -13,6 +16,9 @@ import org.repodriller.scm.SCMRepository;
 
 public class DevelopersVisitor implements CommitVisitor {
 
+	private static final String HTML_PATTERN = "<(\"[^\"]*\"|'[^']*'|[^'\">])*>";
+	private static Pattern pattern = Pattern.compile(HTML_PATTERN);
+	
 	private HashMap<String, Developer> developers;
 	private HashMap<String, String[]> fileExstensions;
 	
@@ -22,15 +28,15 @@ public class DevelopersVisitor implements CommitVisitor {
 		
 		this.fileExstensions.put( "backend", new String[] { "sh", "py", "c", "cpp" } );
 		this.fileExstensions.put( "frontend", new String[] { "css", "scss", "html", "ts", "ui" } );
-		this.fileExstensions.put( "writer", new String[] { "pdf", "md", "txt" } );
-		this.fileExstensions.put( "undefined", new String[] { "php", "java", "js" } );
+		this.fileExstensions.put( "writer", new String[] { "pdf", "md", "txt", "tex" } ); 
+		this.fileExstensions.put( "undefined", new String[] { "php", "java", "js" } ); // py
 	}
 	
 	public HashMap<String, Developer> getDevelopers(){
 		return this.developers;
 	}
 		
-	private List<String> getImportPy(String line) {
+	private List<String> getImportPYTHON(String line) {
 		String[] splitted = line.split("import");
 		String imports = splitted[ splitted.length-1 ];
 		String[] allImports = imports.split(",");
@@ -44,11 +50,69 @@ public class DevelopersVisitor implements CommitVisitor {
 	    return Arrays.stream(extn).anyMatch(entry -> s.endsWith(entry));
 	}
 	
+	private static boolean hasHTMLTags(String text){
+	    Matcher matcher = pattern.matcher(text);
+	    return matcher.find();
+	}
+	
+	private static List<String> getOnlyAdditions(Modification modification){
+		List<String> lines = Arrays.asList( modification.getDiff().split("\n") );
+		List<String> additions = lines.stream()
+				.filter( x -> !x.startsWith("++") && x.startsWith("+") )
+				.map(x -> x.replace("+","").replace("\n"," ").trim())
+				.collect(Collectors.toList()); 
+		return additions;
+	}
+	
+	private static List<String> getImportsJAVA(List<String> lines){
+		List<String> imports = new ArrayList<>();
+		for(String line : lines) { 
+			if(line.contains("import")) { // import java.awt.BorderLayout;
+				line = line.replace("import", "").replace(";", "").trim(); // java.awt.BorderLayout;
+				// System.out.println(line);
+				// imports.add( splitted[0] + "." + splitted[1] ); 
+			}
+		}
+		return imports;
+	}
+	
+	private static List<String> getImportsJAVASCRIPT(List<String> lines){
+		List<String> imports = new ArrayList<>();
+		for(String line : lines) { 
+			if(line.contains("import") || line.contains("require")) System.out.println(line); 
+			// if(line.contains("import")) imports.add( line.split("from")[1].replace(";", "").trim() ); // import { .. } from '...';
+			// else if(line.contains("require")) imports.add( line.split("require")[1].replace("(", "").replace(")", "").replace(";", "").trim() ); // require('...');
+		}
+		return imports;
+	}
+	
 	private void updatePoint(Developer dev, Modification modification) {
 		for (String i : this.fileExstensions.keySet()) {
-			if (!i.equals("undefined"))
+			if (!i.equals("undefined")) {
 				if( checkIfFileHasExtension(modification.getFileName(), this.fileExstensions.get(i)) ) 
 					dev.editPoints(i, 1);
+			}else {
+				for(String ext : this.fileExstensions.get(i)) {
+					if ( modification.getFileName().endsWith(ext) ) {
+						if(ext.equals("php")) {
+							if(hasHTMLTags(modification.getSourceCode())) dev.editPoints("frontend", 1);
+							else dev.editPoints("backend", 1);
+						}
+						else {						
+							List<String> additions = getOnlyAdditions(modification);
+							if(ext.equals("java")) { // import java.awt.BorderLayout;
+								// System.out.println( getImportJAVA(additions) );
+								getImportsJAVA(additions);
+							}
+							else if(ext.equals("js")) { // import { .. } from '...'; , require('...');
+								// System.out.println( getImportsJAVASCRIPT(additions) );
+								getImportsJAVASCRIPT(additions);
+							}
+							
+						}
+					}
+				}
+			}
 		}
 	}
 
