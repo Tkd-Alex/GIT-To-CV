@@ -29,8 +29,14 @@ public class Developer { // Should be committer
 		System.out.println("Name: " + this.name);
 		System.out.println("Email: " + this.email);
 		System.out.println("Commit: " + this.commit);
+		Integer total = 0;
 		for (String i : this.devPoints.keySet()) {
 			System.out.println("Category: " + i + " Points: " + this.devPoints.get(i));
+			total += this.devPoints.get(i);
 		}
+		if(total != 0)
+			for (String i : this.devPoints.keySet())
+				System.out.println("Category: " + i + " Percentage: " + Math.round( ((float)this.devPoints.get(i)*100)/total ) + "%" );
+		
 	}
 }
