@@ -69,19 +69,33 @@ public class DevelopersVisitor implements CommitVisitor {
 		for(String line : lines) { 
 			if(line.contains("import")) { // import java.awt.BorderLayout;
 				line = line.replace("import", "").replace(";", "").trim(); // java.awt.BorderLayout;
-				// System.out.println(line);
+				System.out.println(line);
 				// imports.add( splitted[0] + "." + splitted[1] ); 
 			}
 		}
 		return imports;
 	}
 	
+	// https://developer.mozilla.org/it/docs/Web/JavaScript/Reference/Statements/import
+	/*
+	import defaultExport from "module-name";
+	import * as name from "module-name";
+	import { export } from "module-name";
+	import { export as alias } from "module-name";
+	import { export1 , export2 } from "module-name";
+	import { export1 , export2 as alias2 , [...] } from "module-name";
+	import defaultExport, { export [ , [...] ] } from "module-name";
+	import defaultExport, * as name from "module-name";
+	import "module-name";
+	*/
 	private static List<String> getImportsJAVASCRIPT(List<String> lines){
 		List<String> imports = new ArrayList<>();
 		for(String line : lines) { 
-			if(line.contains("import") || line.contains("require")) System.out.println(line); 
-			// if(line.contains("import")) imports.add( line.split("from")[1].replace(";", "").trim() ); // import { .. } from '...';
-			// else if(line.contains("require")) imports.add( line.split("require")[1].replace("(", "").replace(")", "").replace(";", "").trim() ); // require('...');
+			if( (line.contains("import") || line.contains("require")) && !line.contains("/") ) { // skip custom own module with /
+				Pattern p = Pattern.compile("\"([^\"]*)\"");
+				Matcher m = p.matcher(line.replace("'", "\""));
+				while (m.find()) imports.add(m.group(1));
+			}
 		}
 		return imports;
 	}
@@ -104,9 +118,17 @@ public class DevelopersVisitor implements CommitVisitor {
 								// System.out.println( getImportJAVA(additions) );
 								getImportsJAVA(additions);
 							}
-							else if(ext.equals("js")) { // import { .. } from '...'; , require('...');
-								// System.out.println( getImportsJAVASCRIPT(additions) );
-								getImportsJAVASCRIPT(additions);
+							else if(ext.equals("js")) {
+								WebScraper webscraper = new WebScraper("js");
+								List<String> imports = getImportsJAVASCRIPT(additions) ;
+								
+								for(String imp : imports) {
+									String type = webscraper.classifyImport(imp);
+									if(!type.equals(null)) { 
+										dev.editPoints(type, 1);
+										break; // Other points are linked by file extension. 1File => 1Point, break the loop (limit request)
+									}
+								}
 							}
 							
 						}

@@ -9,6 +9,7 @@ public class Developer { // Should be committer
 	
 	private HashMap<String, Integer> devPoints;
 	
+	// https://api.github.com/users/tkd-alex
 	public Developer(String name, String email) {
 		this.name = name;
 		this.email = email;
