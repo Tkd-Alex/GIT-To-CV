@@ -1,11 +1,13 @@
 package com.tkdalex.gittocv;
 
 import java.util.List;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 import org.repodriller.domain.Commit;
@@ -21,29 +23,23 @@ public class DevelopersVisitor implements CommitVisitor {
 	
 	private HashMap<String, Developer> developers;
 	private HashMap<String, String[]> fileExstensions;
+	private List<String> java_fe;
 	
-	public DevelopersVisitor() {
+	public DevelopersVisitor( Properties properties ) {
 		this.developers = new HashMap<String, Developer>();
 		this.fileExstensions = new HashMap<String, String[]>();
 		
-		this.fileExstensions.put( "backend", new String[] { "sh", "py", "c", "cpp" } );
-		this.fileExstensions.put( "frontend", new String[] { "css", "scss", "html", "ts", "ui" } );
-		this.fileExstensions.put( "writer", new String[] { "pdf", "md", "txt", "tex" } ); 
-		this.fileExstensions.put( "undefined", new String[] { "php", "java", "js" } ); // py
+		this.java_fe = convertToLowerCase( Arrays.asList( properties.getProperty("java_fe").split(";") ) );
+		
+		for(String type : new String[] { "backend", "frontend", "writer", "undefined" } ) {
+			List<String> exstensions = convertToLowerCase( Arrays.asList( properties.getProperty( type ).split(";") ) );
+			String[] exstensionsArray = new String[exstensions.size()];
+			this.fileExstensions.put( type , exstensions.toArray(exstensionsArray) );
+		}
 	}
 	
 	public HashMap<String, Developer> getDevelopers(){
 		return this.developers;
-	}
-		
-	private List<String> getImportPYTHON(String line) {
-		String[] splitted = line.split("import");
-		String imports = splitted[ splitted.length-1 ];
-		String[] allImports = imports.split(",");
-		List<String> importsTrimmed = Arrays.asList(allImports).stream()
-				.map(x -> x.trim())
-				.collect(Collectors.toList()); 
-		return importsTrimmed;
 	}
 	
 	private static boolean checkIfFileHasExtension(String s, String[] extn) {
@@ -53,6 +49,12 @@ public class DevelopersVisitor implements CommitVisitor {
 	private static boolean hasHTMLTags(String text){
 	    Matcher matcher = pattern.matcher(text);
 	    return matcher.find();
+	}
+	
+	private static List<String> convertToLowerCase(List<String> strings) {
+		return strings.stream() 
+				.map( x -> x.toLowerCase().trim()) 
+				.collect(Collectors.toList());
 	}
 	
 	private static List<String> getOnlyAdditions(Modification modification){
@@ -67,13 +69,12 @@ public class DevelopersVisitor implements CommitVisitor {
 	private static List<String> getImportsJAVA(List<String> lines){
 		List<String> imports = new ArrayList<>();
 		for(String line : lines) { 
-			if(line.contains("import")) { // import java.awt.BorderLayout;
-				line = line.replace("import", "").replace(";", "").trim(); // java.awt.BorderLayout;
-				System.out.println(line);
-				// imports.add( splitted[0] + "." + splitted[1] ); 
+			if(line.startsWith("import") && line.split("\\.").length >= 1) { // import java.awt.BorderLayout;
+				imports.add( line.split("\\.")[1] ) ;
 			}
 		}
-		return imports;
+		LinkedHashSet<String> hashSet = new LinkedHashSet<>(imports);
+		return new ArrayList<String>(hashSet);
 	}
 	
 	// https://developer.mozilla.org/it/docs/Web/JavaScript/Reference/Statements/import
@@ -104,32 +105,36 @@ public class DevelopersVisitor implements CommitVisitor {
 		for (String i : this.fileExstensions.keySet()) {
 			if (!i.equals("undefined")) {
 				if( checkIfFileHasExtension(modification.getFileName(), this.fileExstensions.get(i)) ) 
-					dev.editPoints(i, 1);
+					dev.editPoints(i, ((modification.getAdded() == 0) ? 1 : modification.getAdded()));
 			}else {
 				for(String ext : this.fileExstensions.get(i)) {
 					if ( modification.getFileName().endsWith(ext) ) {
 						if(ext.equals("php")) {
-							if(hasHTMLTags(modification.getSourceCode())) dev.editPoints("frontend", 1);
-							else dev.editPoints("backend", 1);
+							if(hasHTMLTags(modification.getSourceCode())) dev.editPoints("frontend", ((modification.getAdded() == 0) ? 1 : modification.getAdded()));
+							else dev.editPoints("backend", ((modification.getAdded() == 0) ? 1 : modification.getAdded()));
 						}
-						else {						
+						else if ( ext.equals("java") || ext.equals("js") ){						
+							List<String> imports = new ArrayList<>();
 							List<String> additions = getOnlyAdditions(modification);
-							if(ext.equals("java")) { // import java.awt.BorderLayout;
-								// System.out.println( getImportJAVA(additions) );
-								getImportsJAVA(additions);
-							}
-							else if(ext.equals("js")) {
-								WebScraper webscraper = new WebScraper("js");
-								List<String> imports = getImportsJAVASCRIPT(additions) ;
+							WebScraper webscraper = new WebScraper("js");
+							
+							if(ext.equals("java")) imports = getImportsJAVA(additions);
+							else imports = getImportsJAVASCRIPT(additions);
+							
+							boolean hasBackendLib = false;
 								
-								for(String imp : imports) {
-									String type = webscraper.classifyImport(imp);
-									if(!type.equals(null)) { 
-										dev.editPoints(type, 1);
-										break; // Other points are linked by file extension. 1File => 1Point, break the loop (limit request)
-									}
+							for(String imp : imports) {
+								String type = null; 
+								if(ext.equals("java")) type = this.java_fe.contains(imp.toLowerCase()) ? "frontend" : "backend";
+								else type = webscraper.classifyImport(imp);
+								if(!type.equals(null) && type.equals("backend")) { 
+									hasBackendLib = true;
+									break; // Other points are linked by file extension. 1File => 1Point, break the loop (limit request)
 								}
 							}
+								
+							if(hasBackendLib == false) dev.editPoints("frontend", ((modification.getAdded() == 0) ? 1 : modification.getAdded()));
+							else dev.editPoints("backend", ((modification.getAdded() == 0) ? 1 : modification.getAdded()));
 							
 						}
 					}
@@ -145,18 +150,12 @@ public class DevelopersVisitor implements CommitVisitor {
 		Developer dev = developers.get(commit.getAuthor().getName());
 		dev.commit++;
 		
-		for(Modification modification : commit.getModifications()) {			
+		for(Modification modification : commit.getModifications()) {	
+			// System.out.println( commit.getHash() );
+			// System.out.println(commit.getMsg() );
 			this.updatePoint(dev, modification);
-			
-			writer.write(
-					commit.getHash(),
-					commit.getAuthor().getName(),
-					commit.getCommitter().getName(),
-					modification.getFileName(),
-					modification.getType(),
-					modification.getAdded()
-			);
 		}
+	
 	}
 
 }
