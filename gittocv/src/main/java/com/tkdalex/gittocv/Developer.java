@@ -20,8 +20,21 @@ public class Developer { // Should be committer
 		this.devPoints.put("writer", 0);
 	}
 	
+	public void initSocialInfo(String socialname) {
+		GitSocialScraper socialscraper = new GitSocialScraper(socialname);
+		try {
+			socialscraper.getInfo(this.email);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public Integer editPoints(String key, Integer value) {
 		this.devPoints.put(key, this.devPoints.get(key) + value);
+		return this.devPoints.get(key);
+	}
+	
+	public Integer getPoints(String key) {
 		return this.devPoints.get(key);
 	}
 	

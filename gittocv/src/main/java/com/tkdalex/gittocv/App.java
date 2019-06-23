@@ -1,9 +1,14 @@
 package com.tkdalex.gittocv;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Properties;
@@ -55,6 +60,46 @@ public class App implements Study
 		return false;
 	}
 	
+	private static String getSocialName(String url) {
+		if(isRemote(url)) {
+			String urlNoProtocol = url.replace("www", "").replace("https://", "").replace("http://", "");
+			String[] splitted = urlNoProtocol.split("\\.");
+			if(splitted.length > 0) return splitted[0].trim();
+		}else {
+			File file = new File( url + "/.git/config" );
+			BufferedReader reader = null;
+
+			try {
+			    reader = new BufferedReader(new FileReader(file));
+			    String text = null;
+
+			    while ((text = reader.readLine()) != null) {
+			        if(text.trim().startsWith( "url = " )) {
+			        	String urlNoProtocol = text
+			        			.replace("url", "")
+			        			.replace("=", "")
+			        			.replace("git@", "")
+			        			.replace("www", "")
+			        			.replace("https://", "")
+			        			.replace("http://", "");
+	        			String[] splitted = urlNoProtocol.split("\\.");
+	        			if(splitted.length > 0) return splitted[0].trim();
+			        }
+			    }
+			    
+			} catch (FileNotFoundException e) {
+			    e.printStackTrace();
+			} catch (IOException e) {
+			    e.printStackTrace();
+			} finally {
+			    try {
+			        if (reader != null) { reader.close(); }
+			    } catch (IOException e) { e.printStackTrace(); }
+			}
+		}
+		return "";
+	}
+	
 	private static boolean validateProperties( Properties properties ) {
 		boolean isValid = true;
 		List<String> arrayProps =  new ArrayList<String>() { 
@@ -100,8 +145,10 @@ public class App implements Study
 				.process(analyzer, new NoPersistence())
 				.mine();
 		
+		String socialname = getSocialName(urlOrPath);
 		HashMap<String, Developer> developers = analyzer.getDevelopers();
 		for (Developer i : developers.values()) {
+			i.initSocialInfo(socialname);
 			i.print();
 			System.out.println("=====================================");
 		}

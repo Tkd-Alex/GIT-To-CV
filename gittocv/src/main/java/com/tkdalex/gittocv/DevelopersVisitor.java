@@ -69,7 +69,7 @@ public class DevelopersVisitor implements CommitVisitor {
 	private static List<String> getImportsJAVA(List<String> lines){
 		List<String> imports = new ArrayList<>();
 		for(String line : lines) { 
-			if(line.startsWith("import") && line.split("\\.").length >= 1) { // import java.awt.BorderLayout;
+			if(line.startsWith("import") && line.split("\\.").length > 1) { // import java.awt.BorderLayout;
 				imports.add( line.split("\\.")[1] ) ;
 			}
 		}
