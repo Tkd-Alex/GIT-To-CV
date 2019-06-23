@@ -68,11 +68,10 @@ public class DevelopersVisitor implements CommitVisitor {
 	
 	private static List<String> getImportsJAVA(List<String> lines){
 		List<String> imports = new ArrayList<>();
-		for(String line : lines) { 
-			if(line.startsWith("import") && line.split("\\.").length > 1) { // import java.awt.BorderLayout;
-				imports.add( line.split("\\.")[1] ) ;
-			}
-		}
+		for(String line : lines) 
+			if(line.startsWith("import") && line.split("\\.").length > 1) // import java.awt.BorderLayout;
+				imports.add( line.split("\\.")[0] + ". " + line.split("\\.")[1] ) ;
+
 		LinkedHashSet<String> hashSet = new LinkedHashSet<>(imports);
 		return new ArrayList<String>(hashSet);
 	}
@@ -92,7 +91,8 @@ public class DevelopersVisitor implements CommitVisitor {
 	private static List<String> getImportsJAVASCRIPT(List<String> lines){
 		List<String> imports = new ArrayList<>();
 		for(String line : lines) { 
-			if( (line.contains("import") || line.contains("require")) && !line.contains("/") ) { // skip custom own module with /
+			// if( (line.contains("import") || line.contains("require")) && !line.contains("/") ) { // skip custom own module with /
+			if( (line.trim().startsWith("import") || line.trim().startsWith("require")) && !line.contains("/") ) {
 				Pattern p = Pattern.compile("\"([^\"]*)\"");
 				Matcher m = p.matcher(line.replace("'", "\""));
 				while (m.find()) imports.add(m.group(1));

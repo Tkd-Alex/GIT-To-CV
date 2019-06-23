@@ -7,8 +7,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Properties;
@@ -145,12 +146,42 @@ public class App implements Study
 				.process(analyzer, new NoPersistence())
 				.mine();
 		
+
 		String socialname = getSocialName(urlOrPath);
+
 		HashMap<String, Developer> developers = analyzer.getDevelopers();
-		for (Developer i : developers.values()) {
-			i.initSocialInfo(socialname);
-			i.print();
-			System.out.println("=====================================");
+		for (Developer i : developers.values()) i.initSocialInfo(socialname);
+		
+		if(properties.getProperty("export_as").equals("csv")) {
+			try {
+				PrintWriter writer = new PrintWriter("the-file-name.csv", "UTF-8");
+				writer.println("Name;Email;SocialID;SocialUsername;AvatarURL;WebSite;Location;Bio;CreatedAt;Commits;Backend%;Frontend%;Writer%");
+				for (Developer i : developers.values()) {
+					Integer total = i.getPoints("backend") + i.getPoints("frontend") + i.getPoints("writer"); 
+					String singleline = 
+							i.name + ";" + 
+							i.email + ";" +
+							( (i.getId() == null) ?  " " : i.getId() ) + ";" + 
+							( (i.getUsername() == null) ?  " " : i.getUsername() ) + ";" + 
+							( (i.getAvatar_url() == null) ?  " " : i.getAvatar_url() ) + ";" + 
+							( (i.getWebsite() == null) ?  " " : i.getWebsite() ) + ";" + 
+							( (i.getLocation() == null) ?  " " : i.getLocation() ) + ";" + 
+							( (i.getBio() == null) ?  " " : i.getBio() ) + ";" + 
+							( (i.getCreated_at() == null) ?  " " : i.getCreated_at() ) + ";" + 
+							i.commit + ";" +
+							Math.round( ((float)i.getPoints("backend")*100)/total )  + ";" +
+							Math.round( ((float)i.getPoints("frontend")*100)/total )  + ";" +
+							Math.round( ((float)i.getPoints("writer")*100)/total )  + ";"
+							;
+					writer.println(singleline);
+				}
+				writer.close();
+				
+			} catch (FileNotFoundException e) { e.printStackTrace();
+			} catch (UnsupportedEncodingException e) { e.printStackTrace(); }
 		}
+		
+		
+		
 	}
 }
