@@ -46,16 +46,18 @@ public class GitSocialScraper {
 				// #1 - Search user by email
 				users_result = this.makeRequest( String.format("https://api.github.com/search/users?q=%s+in:email", email) );
 				if(users_result != null && users_result.getJSONArray("items").length() != 0 ){
+					HashMap<String, String> info = new HashMap<String, String>();
+					
 					JSONObject user = (JSONObject) users_result.getJSONArray("items").get(0) ;
 					String socialid = user.get("id").toString();
+					
+					info.put("id", user.get("id").toString());
+					info.put("username", (String) user.get("login"));
+					info.put("avatar_url", (String) user.get("avatar_url"));
 					
 					// #2 - Get full info by id
 					fullinfo = this.makeRequest( "https://api.github.com/user/" + socialid );
 					if(fullinfo!= null) {
-						HashMap<String, String> info = new HashMap<String, String>();
-						info.put("id", fullinfo.get("id").toString());
-						info.put("username", (String) fullinfo.get("login"));
-						info.put("avatar_url", (String) fullinfo.get("avatar_url"));
 						info.put("website", (String) fullinfo.get("blog"));
 						info.put("location", (fullinfo.isNull("location")) ? null : (String) fullinfo.get("location"));
 						info.put("bio", (fullinfo.isNull("bio")) ? null : (String) fullinfo.get("bio"));
