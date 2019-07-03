@@ -27,7 +27,6 @@ import java.util.zip.ZipOutputStream;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import org.repodriller.RepoDriller;
 import org.repodriller.RepositoryMining;
 import org.repodriller.Study;
@@ -191,16 +190,9 @@ public class App implements Study
 			for(Developer j : developers.values()) if( j.email.equals(i.email) ) dev = j;
 			if(dev == null ) developers.put(i.name, i);
 			else {
-				System.out.println("Merge points for: " + i.name + " , " + dev.name );
-				
-				// System.out.println("Backend: " + i.getPoints("backend") + " + " + dev.getPoints("backend") );
-				dev.editPoints("backend", i.getPoints("backend")) ;
-				
-				// System.out.println("Frontend: " + i.getPoints("frontend") + " + " + dev.getPoints("frontend") );
-				dev.editPoints("frontend", i.getPoints("frontend")) ;
-				
-				// System.out.println("Writer: " + i.getPoints("writer") + " + " + dev.getPoints("writer") );
-				dev.editPoints("writer", i.getPoints("writer")) ;
+				System.out.println("Merge points/commit for: " + i.name + " , " + dev.name );
+				for (String cat : dev.getKeyPoints()) dev.editPoints(cat , i.getPoints( cat )) ;
+				dev.commit += i.commit;
 			}
 		}
 		
@@ -246,7 +238,10 @@ public class App implements Study
 			JSONArray outputData = new JSONArray();
 			for (Developer i : developers.values()) {
 				JSONObject singleDeveloper = new JSONObject();
-				Integer total = i.getPoints("backend") + i.getPoints("frontend") + i.getPoints("writer"); 
+				
+				Integer total = 0;
+				for (String cat : i.getKeyPoints()) total += i.getPoints( cat );
+				
 				singleDeveloper.put("name", i.name );
 				singleDeveloper.put("email", i.email );
 				singleDeveloper.put("id", ( (i.getId() == null) ?  " " : i.getId() ) );
@@ -257,10 +252,22 @@ public class App implements Study
 				singleDeveloper.put("bio", ( (i.getBio() == null) ?  " " : i.getBio() ) );
 				singleDeveloper.put("created_at", ( (i.getCreated_at() == null) ?  " " : i.getCreated_at() ) );
 				singleDeveloper.put("commit", i.commit );
-				singleDeveloper.put("commit_star", Math.floor( ((float)i.commit * 5 ) / max_commit ) );
-				singleDeveloper.put("backend", Math.round( ((float)i.getPoints("backend")*100)/total ) );
-				singleDeveloper.put("frontend", Math.round( ((float)i.getPoints("frontend")*100)/total ) );
-				singleDeveloper.put("writer", Math.round( ((float)i.getPoints("writer")*100)/total ) );
+				
+				// singleDeveloper.put("commit_star", Math.floor( ((float)i.commit * 5 ) / max_commit ) );
+				if( i.commit > 0 && i.commit <= (max_commit/5) ) singleDeveloper.put("commit_star", 1);
+				else if( i.commit > (max_commit/5) && i.commit <= (max_commit/5)*2 ) singleDeveloper.put("commit_star", 2);
+				else if( i.commit > ((max_commit/5)*2) && i.commit <= (max_commit/5)*3 ) singleDeveloper.put("commit_star", 3);
+				else if( i.commit > ((max_commit/5)*3) && i.commit <= (max_commit/5)*4 ) singleDeveloper.put("commit_star", 4);
+				else if( i.commit > ((max_commit/5)*4) && i.commit <= max_commit ) singleDeveloper.put("commit_star", 5);
+
+				JSONArray skills = new JSONArray();
+				for (String cat : i.getKeyPoints()) {
+					JSONObject category = new JSONObject();
+					category.put( cat , Math.round( ((float)i.getPoints( cat )*100)/total ) );
+					skills.put( category );
+				}
+				singleDeveloper.put("skills", skills );
+				
 				outputData.put(singleDeveloper);
 			}
 			try (FileWriter file = new FileWriter("html/js/git_data.js")) {

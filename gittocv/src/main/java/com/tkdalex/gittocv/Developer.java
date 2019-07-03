@@ -1,11 +1,18 @@
 package com.tkdalex.gittocv;
 
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 public class Developer { // Should be committer
 	public String name;
 	public String email;
 	public int commit;
+	
+	public List<String> extraCategory;
 	
 	private String id;
 	private String username;
@@ -23,9 +30,6 @@ public class Developer { // Should be committer
 		this.email = email;
 		this.commit = 0;
 		this.devPoints = new HashMap<String, Integer>();
-		this.devPoints.put("backend", 0);
-		this.devPoints.put("frontend", 0);
-		this.devPoints.put("writer", 0);
 		
 		this.setId(null);
 		this.setUsername(null);
@@ -34,6 +38,36 @@ public class Developer { // Should be committer
 		this.setLocation(null);
 		this.setBio(null);
 		this.setCreated_at(null);
+		
+		this.extraCategory = new ArrayList<>();
+		
+		this.devPoints.put("frontend", 0);
+		this.devPoints.put("writer", 0);
+		this.devPoints.put("backend", 0);
+		
+		
+	}
+	
+	public void initExtraCategory(Properties properties) {
+        Enumeration e = properties.propertyNames();
+        List<String> arrayProps =  new ArrayList<String>() { 
+            { 
+            	add("repository");
+            	add("backend");
+            	add("frontend");
+            	add("writer");
+            	add("undefined");
+            	add("java_fe");
+            	add("export_as");
+            } 
+		};
+		for (; e.hasMoreElements();) {
+			String key = (String) e.nextElement();
+			if(!arrayProps.contains(key)) {
+				this.devPoints.put(key, 0);
+				this.extraCategory.add(key);
+			}
+		}
 	}
 	
 	public void initSocialInfo(String socialname) {
@@ -61,6 +95,10 @@ public class Developer { // Should be committer
 	
 	public Integer getPoints(String key) {
 		return this.devPoints.get(key);
+	}
+	
+	public Set<String> getKeyPoints() {
+		return this.devPoints.keySet();
 	}
 	
 	public void print() {
