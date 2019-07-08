@@ -209,9 +209,15 @@ public class App implements Study
 		if(properties.getProperty("export_as").equals("csv")) {
 			try {
 				PrintWriter writer = new PrintWriter(filename + ".csv", "UTF-8");
-				writer.println("Name;Email;SocialID;SocialUsername;AvatarURL;WebSite;Location;Bio;CreatedAt;Commits;Backend%;Frontend%;Writer%");
+				String heading = "Name;Email;SocialID;SocialUsername;AvatarURL;WebSite;Location;Bio;CreatedAt;Commits;"; 
+				
+				Developer firstDev = developers.get( developers.keySet().toArray()[0] );
+				for (String cat : firstDev.getKeyPoints()) heading += cat + "%;";
+				
+				writer.println(heading);
 				for (Developer i : developers.values()) {
-					Integer total = i.getPoints("backend") + i.getPoints("frontend") + i.getPoints("writer"); 
+					Integer total = 0;
+					for (String cat : i.getKeyPoints()) total += i.getPoints( cat );
 					String singleline = 
 							i.name + ";" + 
 							i.email + ";" +
@@ -222,11 +228,8 @@ public class App implements Study
 							( (i.getLocation() == null) ?  " " : i.getLocation() ) + ";" + 
 							( (i.getBio() == null) ?  " " : i.getBio() ) + ";" + 
 							( (i.getCreated_at() == null) ?  " " : i.getCreated_at() ) + ";" + 
-							i.commit + ";" +
-							Math.round( ((float)i.getPoints("backend")*100)/total )  + ";" +
-							Math.round( ((float)i.getPoints("frontend")*100)/total )  + ";" +
-							Math.round( ((float)i.getPoints("writer")*100)/total )  + ";"
-							;
+							i.commit + ";";
+					for (String cat : i.getKeyPoints()) singleline += Math.round( ((float)i.getPoints( cat )*100)/total ) + ";" ;
 					writer.println(singleline);
 				}
 				writer.close();
@@ -254,11 +257,11 @@ public class App implements Study
 				singleDeveloper.put("commit", i.commit );
 				
 				// singleDeveloper.put("commit_star", Math.floor( ((float)i.commit * 5 ) / max_commit ) );
-				if( i.commit > 0 && i.commit <= (max_commit/5) ) singleDeveloper.put("commit_star", 1);
+				if( i.commit > 1 && i.commit <= (max_commit/5) ) singleDeveloper.put("commit_star", 1);
 				else if( i.commit > (max_commit/5) && i.commit <= (max_commit/5)*2 ) singleDeveloper.put("commit_star", 2);
 				else if( i.commit > ((max_commit/5)*2) && i.commit <= (max_commit/5)*3 ) singleDeveloper.put("commit_star", 3);
 				else if( i.commit > ((max_commit/5)*3) && i.commit <= (max_commit/5)*4 ) singleDeveloper.put("commit_star", 4);
-				else if( i.commit > ((max_commit/5)*4) && i.commit <= max_commit ) singleDeveloper.put("commit_star", 5);
+				else if( i.commit > ((max_commit/5)*4) ) singleDeveloper.put("commit_star", 5);
 
 				JSONArray skills = new JSONArray();
 				for (String cat : i.getKeyPoints()) {
